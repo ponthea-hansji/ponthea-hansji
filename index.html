@@ -3,13 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upload CSV File</title>
+    <title>Upload and Process CSV File</title>
 </head>
 <body>
-    <h1>Upload CSV File</h1>
-    <form action="upload.py" method="post" enctype="multipart/form-data">
-        <input type="file" name="csvfile" id="csvfile" accept=".csv">
-        <button type="submit">Upload and Process</button>
-    </form>
+    <h1>Upload and Process CSV File</h1>
+    <input type="file" id="csvfile" accept=".csv">
+    <button onclick="uploadAndProcess()">Upload and Process</button>
+
+    <h2>Processed Data (Preview)</h2>
+    <table id="dataTable">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Requested Rooms</th>
+            </tr>
+        </thead>
+        <tbody id="dataBody"></tbody>
+    </table>
+
+    <button onclick="downloadProcessedData()">Download Processed Data as CSV</button>
+
+    <script>
+        let processedData = [];
+
+        function uploadAndProcess() {
+            const fileInput = document.getElementById('csvfile');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert('Please select a file!');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const csv = event.target.result;
+                processData(csv);
+            };
+            reader.readAsText(file);
+        }
+
+        function processData(csv) {
+            const rows = csv.split('\n');
+            processedData = [];
+
+            // Process CSV rows
+            rows.forEach(row => {
+                const columns = row.split(',');
+                const date = columns[2]; // Assuming Date is in column C (index 2)
+                const rooms = parseInt(columns[3].replace(',', '')); // Assuming Requested Rooms is in column D (index 3)
+
+                if (date && rooms) {
+                    const existingRow = processedData.find(item => item.Date === date);
+                    if (existingRow) {
+                        existingRow['Requested Rooms'] += rooms;
+                    } else {
+                        processedData.push({ Date: date, 'Requested Rooms': rooms });
+                    }
+                }
+            });
+
+            // Display processed data (first 5 rows)
+            displayProcessedData();
+        }
+
+        function displayProcessedData() {
+            const dataBody = document.getElementById('dataBody');
+            dataBody.innerHTML = '';
+            let rowCount = 0;
+
+            processedData.forEach(item => {
+                if (rowCount < 5) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${item.Date}</td>
+                        <td>${item['Requested Rooms']}</td>
+                    `;
+                    dataBody.appendChild(row);
+                    rowCount++;
+                }
+            });
+        }
+
+        function downloadProcessedData() {
+            if (processedData.length === 0) {
+                alert('Please upload and process a CSV file first!');
+                return;
+            }
+
+            // Convert processed data to CSV format
+            let csvContent = 'Date,Requested Rooms\n';
+            processedData.forEach(item => {
+                csvContent += `${item.Date},${item['Requested Rooms']}\n`;
+            });
+
+            // Create a blob with the CSV data
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+            // Create a link element, set its href and download attributes, then click it programmatically
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'processed_data.csv';
+            link.click();
+        }
+    </script>
 </body>
 </html>
